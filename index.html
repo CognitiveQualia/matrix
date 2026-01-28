@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>The Matrix?</title>
+
+<!-- Matrix-style font -->
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+
+<style>
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    height: 100vh;
+    overflow: hidden;
+    background: black;
+    font-family: 'Share Tech Mono', monospace;
+    color: white;
+  }
+
+  canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 0;
+  }
+
+  .container {
+    position: relative;
+    z-index: 2;
+    height: 100vh;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+
+  h1 {
+    font-size: clamp(1.8rem, 4vw, 2.6rem);
+    margin-bottom: 10px;
+  }
+
+  p {
+    opacity: 0.85;
+    margin-bottom: 30px;
+  }
+
+  .buttons {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 24px;
+    position: relative;
+    height: auto;
+    width: fit-content;
+    margin: 0 auto;
+  }
+
+  button {
+    font-size: 1.1rem;
+    padding: 14px 30px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    touch-action: manipulation;
+    font-family: inherit;
+  }
+
+  #yes {
+    background: #00ff9c;
+    color: black;
+    animation: glow 2s infinite;
+  }
+
+  @keyframes glow {
+    0% { box-shadow: 0 0 6px #00ff9c; }
+    50% { box-shadow: 0 0 18px #00ff9c; }
+    100% { box-shadow: 0 0 6px #00ff9c; }
+  }
+
+  #no {
+    background: black;
+    color: #00ff9c;
+    border: 1px solid #00ff9c;
+    position: absolute;
+    left: 0;
+    top: 0;
+  }
+
+  #no.evading {
+    position: fixed;
+  }
+
+  #noPlaceholder {
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  .hand {
+    position: fixed;
+    font-size: 30px;
+    pointer-events: none;
+    opacity: 0;
+    z-index: 5;
+    transition: opacity 0.2s;
+  }
+
+  .date-picker {
+    display: none;
+    margin-top: 30px;
+    text-align: center;
+  }
+
+  input[type="date"] {
+    padding: 10px;
+    font-size: 1rem;
+    border-radius: 6px;
+    border: none;
+    font-family: inherit;
+  }
+
+  #sendButton {
+    display: none;
+    margin: 15px auto 0;
+    background: #00ff9c;
+    color: black;
+    font-weight: bold;
+    padding: 12px 24px;
+    font-size: 1rem;
+  }
+
+  #sendButton.visible {
+    display: block;
+  }
+
+  #sendButton:hover {
+    box-shadow: 0 0 12px #00ff9c;
+  }
+
+  @media (max-width: 600px) {
+    .buttons {
+      height: 140px;
+    }
+  }
+</style>
+</head>
+<body>
+
+<canvas id="matrix"></canvas>
+
+<div class="container">
+  <div>
+    <h1>Want to watch <em>The Matrix</em> with me?</h1>
+    <p>There is no spoon. Only choice.</p>
+
+    <div class="buttons">
+      <button id="noPlaceholder">No</button>
+      <button id="no">No</button>
+      <button id="yes">Yes</button>
+    </div>
+
+    <div class="date-picker" id="datePicker">
+      <p>Pick the day we bend reality</p>
+      <input type="date" id="dateInput" />
+      <button id="sendButton">Suki są w szoku</button>
+    </div>
+  </div>
+</div>
+
+
+<script>
+/* MATRIX BACKGROUND */
+const canvas = document.getElementById('matrix');
+const ctx = canvas.getContext('2d');
+
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+const letters = 'アカサタナハマヤラ0123456789';
+const fontSize = 16;
+const columns = canvas.width / fontSize;
+const drops = Array(Math.floor(columns)).fill(1);
+
+function drawMatrix() {
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#00ff9c';
+  ctx.font = fontSize + 'px monospace';
+
+  drops.forEach((y, i) => {
+    const text = letters.charAt(Math.floor(Math.random() * letters.length));
+    ctx.fillText(text, i * fontSize, y * fontSize);
+    if (y * fontSize > canvas.height && Math.random() > 0.975) drops[i] = 0;
+    drops[i]++;
+  });
+}
+setInterval(drawMatrix, 50);
+
+/* NO BUTTON EVASION */
+const noBtn = document.getElementById('no');
+const yesBtn = document.getElementById('yes');
+const hand = document.getElementById('hand');
+const buttonContainer = noBtn.parentElement;
+let panicLevel = 0;
+
+// Initialize No button position
+function initNoButton() {
+  const placeholder = document.getElementById('noPlaceholder');
+  const rect = placeholder.getBoundingClientRect();
+  const containerRect = buttonContainer.getBoundingClientRect();
+  
+  noBtn.style.left = (rect.left - containerRect.left) + 'px';
+  noBtn.style.top = (rect.top - containerRect.top) + 'px';
+}
+
+window.addEventListener('load', initNoButton);
+window.addEventListener('resize', initNoButton);
+
+noBtn.addEventListener('mouseenter', evade);
+noBtn.addEventListener('touchstart', evade);
+
+function evade() {
+  panicLevel++;
+
+  // Add evading class to switch to fixed positioning
+  noBtn.classList.add('evading');
+
+  const padding = 20;
+  const maxX = window.innerWidth - noBtn.offsetWidth - padding;
+  const maxY = window.innerHeight - noBtn.offsetHeight - padding;
+
+  const x = Math.random() * maxX;
+  const y = Math.random() * maxY;
+
+  noBtn.style.left = x + 'px';
+  noBtn.style.top = y + 'px';
+
+  noBtn.textContent = "No";
+
+  hand.style.left = x - 30 + 'px';
+  hand.style.top = y - 30 + 'px';
+  hand.style.opacity = 1;
+}
+
+/* YES BUTTON */
+document.getElementById('yes').addEventListener('click', () => {
+  document.getElementById('datePicker').style.display = 'block';
+  document.getElementById('clickSound').play();
+});
+
+/* DATE INPUT */
+document.getElementById('dateInput').addEventListener('change', () => {
+  const dateInput = document.getElementById('dateInput');
+  const sendButton = document.getElementById('sendButton');
+  
+  if (dateInput.value) {
+    sendButton.classList.add('visible');
+  } else {
+    sendButton.classList.remove('visible');
+  }
+});
+</script>
+
+</body>
+</html>
